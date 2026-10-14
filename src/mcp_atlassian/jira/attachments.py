@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from ..models.jira import JiraAttachment
+from ..utils.decorators import handle_auth_errors
 from ..utils.io import validate_safe_path
 from ..utils.media import ATTACHMENT_MAX_BYTES
 from .client import JiraClient
@@ -359,6 +360,39 @@ class AttachmentsMixin(JiraClient, AttachmentsOperationsProto):
             "total": len(attachments),
             "downloaded": downloaded,
             "failed": failed,
+        }
+
+    @handle_auth_errors("Jira API")
+    def delete_attachment(self, attachment_id: str) -> dict[str, Any]:
+        """Permanently delete an attachment by ID.
+
+        Args:
+            attachment_id: The numeric Jira attachment ID (e.g., '10001')
+
+        Returns:
+            Dictionary with the result of the operation
+
+        Raises:
+            ValueError: If attachment_id is empty or not numeric
+            MCPAtlassianAuthenticationError: If authentication fails
+                with the Jira API (401/403)
+            HTTPError: If Jira rejects the request (e.g., 404 not found)
+        """
+        if not attachment_id:
+            raise ValueError("Attachment ID is required")
+        # The ID is interpolated into the DELETE URL; a non-numeric value such as
+        # '1/../../issue/PROJ-1' would redirect the DELETE to another resource.
+        if not attachment_id.isascii() or not attachment_id.isdigit():
+            raise ValueError(f"Attachment ID must be numeric, got {attachment_id!r}")
+
+        logger.info(f"Deleting attachment {attachment_id}")
+        self.jira.remove_attachment(attachment_id)
+        logger.info(f"Successfully deleted attachment {attachment_id}")
+
+        return {
+            "success": True,
+            "attachment_id": attachment_id,
+            "message": f"Attachment {attachment_id} has been deleted",
         }
 
     def upload_attachment(self, issue_key: str, file_path: str) -> dict[str, Any]:

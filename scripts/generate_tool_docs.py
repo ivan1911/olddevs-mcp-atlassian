@@ -92,6 +92,7 @@ CATEGORY_TOOLS: dict[str, list[str]] = {
     "jira-attachments": [
         "jira_download_attachments",
         "jira_get_issue_images",
+        "jira_delete_attachment",
     ],
     "jira-service-desk": [
         "jira_get_service_desk_for_project",
@@ -219,7 +220,7 @@ CATEGORY_META: dict[str, dict[str, str]] = {
     },
     "jira-attachments": {
         "title": "Jira Attachments",
-        "description": "Download attachments and render issue images",
+        "description": "Download, render, and delete issue attachments",
     },
     "jira-service-desk": {
         "title": "Jira Service Desk",
