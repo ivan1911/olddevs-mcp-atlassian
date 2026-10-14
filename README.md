@@ -169,7 +169,7 @@ Documentation is also available in [llms.txt format](https://llmstxt.org/), whic
 | `jira_update_issue` - Update issues | `confluence_update_page` - Update pages | `bitbucket_get_file_content` - Read code |
 | `jira_transition_issue` - Change status | `confluence_add_comment` - Add comments | `bitbucket_create_pull_request` - Open pull requests |
 
-**128 tools total** — See [Tools Reference](https://mcp-atlassian.soomiles.com/docs/tools-reference) for the complete list.
+**129 tools total** — See [Tools Reference](https://mcp-atlassian.soomiles.com/docs/tools-reference) for the complete list.
 
 ## Security
 

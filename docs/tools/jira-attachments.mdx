@@ -1,6 +1,6 @@
 ---
 title: "Jira Attachments"
-description: "Download attachments and render issue images"
+description: "Download, render, and delete issue attachments"
 ---
 
 ### Download Attachments
@@ -33,5 +33,19 @@ Get all images attached to a Jira issue as inline image content.
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `issue_key` | `string` | Yes | Jira issue key (e.g., 'PROJ-123'). Returns image attachments as inline ImageContent for LLM vision. |
+
+---
+
+### Delete Attachment
+
+Permanently delete an attachment from a Jira issue.
+
+<Note>This is a **write** tool. Disabled when `READ_ONLY_MODE=true`.</Note>
+
+**Parameters:**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `attachment_id` | `string` | Yes | Numeric ID of the attachment to delete (e.g., '10001'). Find it in the 'attachments' field returned by jira_get_issue (request fields='attachment'). |
 
 ---

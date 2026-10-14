@@ -467,6 +467,7 @@ def test_jira_mcp(mock_jira_fetcher, mock_base_jira_config):
         create_issue_link,
         create_remote_issue_link,
         create_sprint,
+        delete_attachment,
         delete_issue,
         download_attachments,
         edit_comment,
@@ -569,6 +570,7 @@ def test_jira_mcp(mock_jira_fetcher, mock_base_jira_config):
     jira_sub_mcp.add_tool(create_issue_link)
     jira_sub_mcp.add_tool(create_remote_issue_link)
     jira_sub_mcp.add_tool(remove_issue_link)
+    jira_sub_mcp.add_tool(delete_attachment)
     jira_sub_mcp.add_tool(transition_issue)
     jira_sub_mcp.add_tool(update_proforma_form_answers)
     jira_sub_mcp.add_tool(create_sprint)
@@ -5152,3 +5154,30 @@ async def test_batch_get_changelogs_reports_skipped_issues(
         {"issue_id": "102", "changelogs": []},
         {"issue_id": "TEST-404", "error": "Issue Does Not Exist"},
     ]
+
+
+@pytest.mark.anyio
+async def test_delete_attachment(jira_client, mock_jira_fetcher):
+    """jira_delete_attachment forwards the ID and returns the fetcher result."""
+    mock_jira_fetcher.delete_attachment.return_value = {
+        "success": True,
+        "attachment_id": "10001",
+        "message": "Attachment 10001 has been deleted",
+    }
+
+    response = await jira_client.call_tool(
+        "jira_delete_attachment", {"attachment_id": "10001"}
+    )
+
+    assert json.loads(response.content[0].text)["attachment_id"] == "10001"
+    mock_jira_fetcher.delete_attachment.assert_called_once_with("10001")
+
+
+@pytest.mark.anyio
+async def test_delete_attachment_rejects_non_numeric_id(jira_client, mock_jira_fetcher):
+    """The tool schema rejects IDs that are not plain numbers."""
+    with pytest.raises(ToolError):
+        await jira_client.call_tool(
+            "jira_delete_attachment", {"attachment_id": "1/../../issue/TEST-1"}
+        )
+    mock_jira_fetcher.delete_attachment.assert_not_called()

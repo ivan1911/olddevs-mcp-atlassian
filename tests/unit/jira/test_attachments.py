@@ -4,9 +4,12 @@ from pathlib import Path
 from unittest.mock import MagicMock, mock_open, patch
 
 import pytest
+from requests.exceptions import HTTPError
 
+from mcp_atlassian.exceptions import MCPAtlassianAuthenticationError
 from mcp_atlassian.jira import JiraFetcher
 from mcp_atlassian.jira.attachments import AttachmentsMixin
+from mcp_atlassian.models.jira import JiraAttachment
 
 # Test scenarios for AttachmentsMixin
 #
@@ -1588,3 +1591,75 @@ class TestUploadPathTraversalRegression:
             "download targeting the CWD (where Python imports modules) must be "
             "confined to a dedicated directory, not allowed to overwrite source files"
         )
+
+
+class TestDeleteAttachment:
+    """Tests for AttachmentsMixin.delete_attachment."""
+
+    @pytest.fixture
+    def attachments_mixin(self, jira_fetcher: JiraFetcher) -> AttachmentsMixin:
+        """AttachmentsMixin with a mocked Jira client."""
+        mixin = jira_fetcher
+        mixin.jira = MagicMock()
+        return mixin
+
+    def test_delete_attachment_success(
+        self, attachments_mixin: AttachmentsMixin
+    ) -> None:
+        result = attachments_mixin.delete_attachment("10001")
+
+        assert result == {
+            "success": True,
+            "attachment_id": "10001",
+            "message": "Attachment 10001 has been deleted",
+        }
+        attachments_mixin.jira.remove_attachment.assert_called_once_with("10001")
+
+    def test_delete_attachment_empty_id(
+        self, attachments_mixin: AttachmentsMixin
+    ) -> None:
+        with pytest.raises(ValueError, match="Attachment ID is required"):
+            attachments_mixin.delete_attachment("")
+        attachments_mixin.jira.remove_attachment.assert_not_called()
+
+    @pytest.mark.security_regression
+    @pytest.mark.parametrize(
+        "attachment_id",
+        ["10001/../../issue/PROJ-1", "abc", "10001?x=1", " 10001"],
+    )
+    def test_delete_attachment_rejects_non_numeric_id(
+        self, attachments_mixin: AttachmentsMixin, attachment_id: str
+    ) -> None:
+        """A non-numeric ID must not reach the DELETE URL (path injection)."""
+        with pytest.raises(ValueError, match="must be numeric"):
+            attachments_mixin.delete_attachment(attachment_id)
+        attachments_mixin.jira.remove_attachment.assert_not_called()
+
+    def test_delete_attachment_authentication_error(
+        self, attachments_mixin: AttachmentsMixin
+    ) -> None:
+        attachments_mixin.jira.remove_attachment.side_effect = HTTPError(
+            response=MagicMock(status_code=403)
+        )
+
+        with pytest.raises(MCPAtlassianAuthenticationError):
+            attachments_mixin.delete_attachment("10001")
+
+    def test_delete_attachment_not_found_propagates(
+        self, attachments_mixin: AttachmentsMixin
+    ) -> None:
+        attachments_mixin.jira.remove_attachment.side_effect = HTTPError(
+            "404 Not Found", response=MagicMock(status_code=404)
+        )
+
+        with pytest.raises(HTTPError):
+            attachments_mixin.delete_attachment("10001")
+
+
+def test_attachment_simplified_dict_exposes_id() -> None:
+    """The ID is needed to call jira_delete_attachment, so it must be returned."""
+    attachment = JiraAttachment.from_api_response(
+        {"id": 10001, "filename": "a.txt", "size": 3, "content": "https://x/a"}
+    )
+
+    assert attachment.to_simplified_dict()["id"] == "10001"

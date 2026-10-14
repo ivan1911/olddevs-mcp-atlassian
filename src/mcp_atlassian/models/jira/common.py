@@ -351,6 +351,7 @@ class JiraAttachment(ApiModel):
     def to_simplified_dict(self) -> dict[str, Any]:
         """Convert to simplified dictionary for API response."""
         result = {
+            "id": self.id,
             "filename": self.filename,
             "size": self.size,
             "url": self.url,
